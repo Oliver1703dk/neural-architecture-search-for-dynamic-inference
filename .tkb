@@ -1,0 +1,270 @@
+{
+  "scope": "Workspace",
+  "tasks": {
+    "task-lit-review": {
+      "id": "task-lit-review",
+      "description": "Literature review: 46 papers analyzed\n\n- 33 initial papers + 13 second batch\n- Covers NAS, dynamic inference, edge deployment\n- Key papers: OFA, BigNAS, EDANAS, NACHOS, DrNAS, MSDNet, US-Nets",
+      "columnId": "column-done"
+    },
+    "task-related-works": {
+      "id": "task-related-works",
+      "description": "Write Related Works chapter (Section 2)\n\n- 5 subsections covering NAS, dynamic inference, HW-aware NAS, NAS for dynamic inference, gap analysis\n- 49 references\n- Comparison table identifying our contribution gap",
+      "columnId": "column-done"
+    },
+    "task-research-plan": {
+      "id": "task-research-plan",
+      "description": "Create research plan and project infrastructure\n\n- RESEARCH_PLAN.md with 22-week timeline\n- README.md with project overview\n- PROGRESS.md weekly log\n- CLAUDE.md conventions\n- working_document.md paper skeleton with outlines",
+      "columnId": "column-done"
+    },
+    "task-paper-outlines": {
+      "id": "task-paper-outlines",
+      "description": "Draft outlines for Sections 3-7\n\n- Methodology: open design decisions, trade-offs identified\n- Experimental setup: datasets, baselines, metrics, ablations planned\n- Results/Discussion/Conclusion: structure and success criteria defined",
+      "columnId": "column-done"
+    },
+    "task-dev-environment": {
+      "id": "task-dev-environment",
+      "description": "Set up development environment\n\n- Install PyTorch 2.0+ with CUDA\n- Install timm library for pretrained models\n- Set up Weights & Biases / TensorBoard for experiment tracking\n- Configure conda/docker environment for reproducibility\n- Clone reference repos: OFA, DARTS, timm",
+      "columnId": "column-todo"
+    },
+    "task-data-pipeline": {
+      "id": "task-data-pipeline",
+      "description": "Dataset preparation and data loaders\n\n- CIFAR-10/100 data loaders with augmentation (RandomCrop, HorizontalFlip, ColorJitter)\n- Advanced augmentation: RandAugment, CutOut, MixUp/CutMix\n- ImageNet-100 subset selection (decide: random, mini-ImageNet, or curated difficulty range)\n- Visual Wake Words loader for edge validation\n- Multi-resolution support: {32, 64, 128, 224}",
+      "columnId": "column-todo"
+    },
+    "task-search-space-design": {
+      "id": "task-search-space-design",
+      "description": "Design the supernet search space\n\nCENTRAL DECISION: How big/little are coupled\n- Option A: Nested sub-networks (little is subset of big, as in OFA)\n- Option B: Sibling architectures (independently sampled, shared stem)\n- Option C: Partially overlapping (shared stem + some blocks, big extends further)\n\nDimensions per block:\n- Width: {0.25x, 0.5x, 0.75x, 1.0x}\n- Depth: {1, 2, 3, 4}\n- Kernel: {3, 5, 7}\n- Expansion: {1, 2, 4, 6}\n- Resolution: {128, 160, 192, 224}\n\nDecide: MobileNetV3 blocks vs. RegNet-style parameterization\nCalculate total search space cardinality",
+      "columnId": "column-todo"
+    },
+    "task-implement-supernet": {
+      "id": "task-implement-supernet",
+      "description": "Implement the supernet architecture\n\n- MobileNetV3-style inverted residual blocks as search space building blocks\n- Switchable Batch Normalization (from Slimmable Networks) for multi-width execution\n- Shared stem + searchable blocks + dual classification heads\n- Support for extracting arbitrary sub-networks (big and little) from the supernet\n- Weight sharing between big and little configurations",
+      "columnId": "column-todo"
+    },
+    "task-implement-training": {
+      "id": "task-implement-training",
+      "description": "Implement co-training pipeline\n\n- Sandwich rule: sample {min, max, 2 random} sub-networks per batch (from US-Nets/BigNAS)\n- Inplace distillation: big model's soft predictions as labels for little (Hinton-style, temperature T)\n- Progressive shrinking schedule: kernel -> depth -> width (from OFA)\n- Joint loss: L_CE(big) + alpha*L_CE(little) + beta*L_KD + gamma*L_router\n- Consider NACHOS terms: L_cost, L_peak\n\nOpen: single-stage (BigNAS) vs. multi-stage (OFA) vs. hybrid",
+      "columnId": "column-todo"
+    },
+    "task-implement-router": {
+      "id": "task-implement-router",
+      "description": "Implement input-adaptive routing mechanisms\n\nThree variants to compare:\n1. Confidence-based: softmax confidence > tau threshold\n2. Learned MLP router: takes features, outputs binary routing decision\n3. Difficulty-aware: classifies inputs as easy/hard based on feature statistics\n\nKey decisions:\n- Where does router operate? (raw input / after stem / after little model)\n- Training: supervised warm-start essential (SkipNet lesson), then joint fine-tuning\n- Single-step decisions required (BlockDrop lesson: sequential is slower)\n- Non-differentiable routing: Gumbel-Softmax vs. straight-through vs. REINFORCE",
+      "columnId": "column-todo"
+    },
+    "task-implement-nsga2": {
+      "id": "task-implement-nsga2",
+      "description": "Implement evolutionary NAS (NSGA-II)\n\n- Multi-objective Pareto search: accuracy vs. expected cost vs. memory\n- Population size: 50, generations: 30-50 (following EDANAS)\n- Evaluate sub-networks using supernet weights (no retraining)\n- Support ADA MACs metric (weighted-average MACs by routing fraction)\n- Hardware-aware: integrate latency lookup tables as objective\n\nThis is the primary search strategy (following EDANAS/NACHOS lineage)",
+      "columnId": "column-todo"
+    },
+    "task-implement-drnas": {
+      "id": "task-implement-drnas",
+      "description": "Implement differentiable NAS (DrNAS-style)\n\n- Dirichlet distribution over architecture mixing weights\n- Pathwise derivative estimators for gradient computation\n- Progressive learning: gradually increase channel fractions, prune operations\n- Anchor regularization for exploration-exploitation balance\n- Compare against NSGA-II: faster search but potential collapse issues",
+      "columnId": "column-todo"
+    },
+    "task-validate-naswot": {
+      "id": "task-validate-naswot",
+      "description": "Validate NASWOT zero-cost proxy on our supernet\n\n- Score 100 random sub-networks using NASWOT (log-det of activation kernel matrix)\n- Train those sub-networks and measure actual accuracy\n- Check rank correlation (Kendall's tau) between scores and trained accuracy\n- If correlation is high: use NASWOT to pre-filter candidates before evolutionary search\n- NASWOT works on channel-size spaces (NATS-Bench SSS), relevant for our width search",
+      "columnId": "column-todo"
+    },
+    "task-train-baselines": {
+      "id": "task-train-baselines",
+      "description": "Train and evaluate all baseline models\n\nStatic baselines:\n- MobileNetV3-Small (0.35x, 0.5x, 0.75x, 1.0x multipliers)\n- MobileNetV3-Large (0.75x, 1.0x)\n- EfficientNet-B0\n\nDynamic baselines:\n- MobileNetV3-Small->Large cascade (independently trained, confidence threshold)\n- MSDNet (early-exit baseline)\n- BranchyNet-style exits on MobileNetV3\n- OFA sub-network pair extraction + cascade\n\nReproduce if possible:\n- EDANAS (80.9% at 17.31M ADA MACs on CIFAR-10)\n- NACHOS (72.65% at 2.44M MACs)",
+      "columnId": "column-todo"
+    },
+    "task-cifar100-experiments": {
+      "id": "task-cifar100-experiments",
+      "description": "CIFAR-100 main experiments (primary development dataset)\n\n- Train supernet on CIFAR-100\n- Run NAS search (NSGA-II primary, DrNAS comparison)\n- Evaluate discovered big/little pairs\n- Generate Pareto frontier: accuracy vs. average MACs\n- Compare against all baselines\n- Report mean +/- std over 3 seeds (42, 123, 456)",
+      "columnId": "column-todo"
+    },
+    "task-cifar10-experiments": {
+      "id": "task-cifar10-experiments",
+      "description": "CIFAR-10 experiments (debugging and baseline validation)\n\n- Quick iteration on CIFAR-10 first\n- Validate training pipeline works\n- Run initial ablations\n- Compare against EDANAS/NACHOS published numbers",
+      "columnId": "column-todo"
+    },
+    "task-imagenet100-experiments": {
+      "id": "task-imagenet100-experiments",
+      "description": "ImageNet-100 experiments (realistic evaluation)\n\n- Select 100-class subset\n- Train supernet at 224x224 resolution\n- Run NAS search with ImageNet-100-specific cost models\n- Multi-resolution experiments if resolution is in search space\n- Compare against BigNAS range (76.5-80.9% at 242-1040 MFLOPs on full ImageNet)",
+      "columnId": "column-todo"
+    },
+    "task-ablation-cotraining": {
+      "id": "task-ablation-cotraining",
+      "description": "ABLATION 1 (MOST CRITICAL): Co-training vs. independent training\n\nThis directly tests the core thesis of the project.\n\n- Train big and little independently, cascade them\n- Compare against co-trained pair (without distillation)\n- Compare against co-trained pair (with distillation)\n- Compare against co-trained + progressive shrinking\n\nReference: US-Nets show +2.2% from inplace distillation\nIf co-training does not help, the project needs to pivot.",
+      "columnId": "column-todo"
+    },
+    "task-ablation-router": {
+      "id": "task-ablation-router",
+      "description": "ABLATION 2: Router strategy comparison\n\n- No router (always big): upper bound on accuracy\n- No router (always little): upper bound on efficiency\n- Random routing: is router learning beyond a coin flip?\n- Confidence-based vs. learned MLP vs. difficulty-aware\n- Oracle routing: run both models, pick correct one (upper bound)\n\nMeasure: routing accuracy, exit rate, overhead (MACs), calibration (ECE)",
+      "columnId": "column-todo"
+    },
+    "task-ablation-searchspace": {
+      "id": "task-ablation-searchspace",
+      "description": "ABLATION 3: Search space coupling\n\n- Nested sub-networks (Option A) vs. sibling architectures (Option B) vs. partially overlapping (Option C)\n- Compare quality of discovered big/little pairs across coupling strategies\n- Does weight sharing benefit (Option A) outweigh architectural freedom (Option B)?",
+      "columnId": "column-todo"
+    },
+    "task-ablation-distillation": {
+      "id": "task-ablation-distillation",
+      "description": "ABLATION 4: Distillation strategy\n\n- No distillation (CE loss only)\n- Logit distillation only (Hinton-style soft targets)\n- Logit + feature distillation (intermediate layer matching)\n- Temperature sweep: T in {1, 2, 4, 8, 16, 20}",
+      "columnId": "column-todo"
+    },
+    "task-ablation-nas-comparison": {
+      "id": "task-ablation-nas-comparison",
+      "description": "ABLATION 5: NAS strategy comparison\n\n- Evolutionary (NSGA-II) vs. DrNAS vs. random search (sanity check)\n- With vs. without NASWOT pre-filtering\n- Compare: search cost (GPU-hrs), best accuracy found, architectures evaluated\n- Does progressive shrinking or single-stage produce better little models?",
+      "columnId": "column-todo"
+    },
+    "task-ablation-loss": {
+      "id": "task-ablation-loss",
+      "description": "ABLATION 6: Loss function components\n\n- Full loss vs. without L_routing vs. without L_consistency vs. without distillation\n- Sensitivity sweep: alpha, beta, gamma, lambda weights\n- Search space dimensions: width-only, depth-only, kernel-only, full",
+      "columnId": "column-todo"
+    },
+    "task-latency-tables": {
+      "id": "task-latency-tables",
+      "description": "Build latency lookup tables for edge devices\n\n- Profile individual operations (conv with specific kernel, channels, spatial size) on each target device\n- Jetson Nano: use CUDA events, nvidia-smi for memory, INA3221 for power\n- Raspberry Pi 4: use time.perf_counter(), /proc/self/status for memory\n- Build predictive latency model from per-operation measurements\n- Validate: predicted vs. measured end-to-end latency correlation",
+      "columnId": "column-todo"
+    },
+    "task-onnx-export": {
+      "id": "task-onnx-export",
+      "description": "Model export and optimization pipeline\n\n- ONNX export from PyTorch\n- TensorRT optimization for Jetson Nano (FP32, FP16, INT8)\n- Quantization calibration: select calibration samples, test entropy vs. MinMax\n- INT8 quantization-aware: check layer-by-layer sensitivity\n- Verify accuracy preservation after export/optimization",
+      "columnId": "column-todo"
+    },
+    "task-deploy-jetson": {
+      "id": "task-deploy-jetson",
+      "description": "Deploy and benchmark on Jetson Nano (primary edge target)\n\n- Deploy discovered big/little pair + router\n- Measure: latency (median over 1000 inferences, 100 warmup), throughput, peak memory, energy\n- Test FP32, FP16, INT8 variants\n- Compare against all baselines on same hardware\n- Profile routing overhead specifically (feature extraction + router forward + branching)\n- Thermal throttling analysis: sustained throughput, temperature curves",
+      "columnId": "column-todo"
+    },
+    "task-deploy-rpi": {
+      "id": "task-deploy-rpi",
+      "description": "Deploy and benchmark on Raspberry Pi 4 (CPU-only)\n\n- CPU-only execution: different performance characteristics than GPU\n- Routing overhead proportionally more significant without GPU parallelism\n- Same measurement protocol as Jetson\n- Key question: does dynamic approach still provide net speedup on CPU-only?",
+      "columnId": "column-todo"
+    },
+    "task-deploy-stretch": {
+      "id": "task-deploy-stretch",
+      "description": "STRETCH: Deploy on Coral Dev Board / Android mobile\n\n- Only if time permits\n- Tests generalization to different accelerator types (Edge TPU, Snapdragon DSP)\n- Cross-platform comparison table",
+      "columnId": "column-todo"
+    },
+    "task-pareto-plots": {
+      "id": "task-pareto-plots",
+      "description": "Create Pareto frontier plots (most important figure)\n\n- Three subplots: (a) Accuracy vs. FLOPs, (b) Accuracy vs. Latency (Jetson), (c) Accuracy vs. Energy\n- Show: our Pareto front (swept across tau), static baselines as points, cascaded baseline front, MSDNet front\n- Reference anchors: BigNAS range, MobileNetV3-Small/Large, EDANAS/NACHOS\n- Also: accuracy vs. exit rate curve, threshold sensitivity curve",
+      "columnId": "column-todo"
+    },
+    "task-dynamic-analysis": {
+      "id": "task-dynamic-analysis",
+      "description": "Dynamic behavior analysis and visualization\n\n- Exit distribution histogram (fraction to little vs. big, by class/difficulty)\n- Confidence calibration plot (reliability diagram, ECE)\n- Threshold sensitivity curve (accuracy + FLOPs vs. tau)\n- Per-class exit rate table\n- Qualitative examples: correctly/incorrectly routed samples\n- Oracle routing gap analysis",
+      "columnId": "column-todo"
+    },
+    "task-write-methodology": {
+      "id": "task-write-methodology",
+      "description": "Write Section 3: Methodology\n\n- Finalize based on experimental decisions\n- Overview figure showing full pipeline\n- Search space design with cardinality\n- Co-training strategy with final hyperparameters\n- Routing mechanism details\n- NAS strategy descriptions\n- Edge-aware optimization approach",
+      "columnId": "column-todo"
+    },
+    "task-write-experiments": {
+      "id": "task-write-experiments",
+      "description": "Write Section 4: Experimental Setup\n\n- Dataset details with exact splits and preprocessing\n- Baseline descriptions and justifications\n- Full metric definitions\n- Hardware specifications and measurement protocols\n- Implementation details with all hyperparameters\n- Reproducibility: configs, seeds, environment",
+      "columnId": "column-todo"
+    },
+    "task-write-results": {
+      "id": "task-write-results",
+      "description": "Write Section 5: Results\n\n- Main comparison tables (CIFAR-10, CIFAR-100, ImageNet-100)\n- Pareto frontier figures\n- NAS strategy comparison table\n- All ablation study tables and analysis\n- Edge deployment benchmark tables\n- Dynamic behavior analysis figures",
+      "columnId": "column-todo"
+    },
+    "task-write-discussion": {
+      "id": "task-write-discussion",
+      "description": "Write Section 6: Discussion\n\n- 3-5 key findings (each tied to a table/figure)\n- Surprising or counter-intuitive results\n- Honest limitations assessment\n- Future work directions",
+      "columnId": "column-todo"
+    },
+    "task-write-conclusion": {
+      "id": "task-write-conclusion",
+      "description": "Write Section 7: Conclusion\n\n- Restate problem and approach\n- Summarize key quantitative results\n- State broader significance\n- Scope and future note",
+      "columnId": "column-todo"
+    },
+    "task-write-abstract": {
+      "id": "task-write-abstract",
+      "description": "Write Abstract (~200-250 words)\n\n- Problem: current dynamic inference cascades independently trained models\n- Approach: NAS-driven co-training of coupled big/little models in a supernet\n- Key results: accuracy, latency, energy numbers on edge hardware\n- Conclusion: one sentence on significance",
+      "columnId": "column-todo"
+    },
+    "task-write-appendix": {
+      "id": "task-write-appendix",
+      "description": "Write Appendix\n\n- A: Full hyperparameter tables\n- B: Architecture visualizations (DAGs, weight sharing heatmaps)\n- C: Additional results (per-class, variance, training curves, NASWOT validation)\n- D: Edge deployment details (quantization, memory profiling, thermal, router overhead)\n- E: Search space analysis (cardinality, sub-network distributions)",
+      "columnId": "column-todo"
+    },
+    "task-final-paper": {
+      "id": "task-final-paper",
+      "description": "Final paper compilation\n\n- Convert from Markdown to LaTeX (if required)\n- Format references as BibTeX\n- Ensure all figures are publication quality\n- Proofread and cross-reference all sections\n- Check reproducibility: all configs, seeds, and code documented",
+      "columnId": "column-todo"
+    },
+    "task-presentation": {
+      "id": "task-presentation",
+      "description": "Final presentation preparation\n\n- Create slides covering: motivation, approach, key results, demo\n- Include Pareto frontier plots and architecture visualizations\n- Prepare live demo on edge device if possible\n- Practice presentation",
+      "columnId": "column-todo"
+    },
+    "task-open-source": {
+      "id": "task-open-source",
+      "description": "Open source release\n\n- Clean up code and add docstrings\n- Write comprehensive README with setup instructions\n- Add config files for all experiments\n- Docker/conda environment for reproducibility\n- Release pre-trained supernet weights\n- License: Apache 2.0 or MIT",
+      "columnId": "column-todo"
+    },
+    "task-supervisor-meeting": {
+      "id": "task-supervisor-meeting",
+      "description": "Schedule kickoff meeting with Francesco Daghero\n\n- Present literature review findings and gap analysis\n- Discuss search space coupling decision (nested vs. sibling vs. overlapping)\n- Align on dataset priorities and compute budget\n- Clarify edge hardware availability (Jetson Nano, RPi)\n- Get feedback on router design choices",
+      "columnId": "column-todo"
+    }
+  },
+  "columns": [
+    {
+      "id": "column-todo",
+      "title": "To do",
+      "tasksIds": [
+        "task-supervisor-meeting",
+        "task-dev-environment",
+        "task-data-pipeline",
+        "task-search-space-design",
+        "task-implement-supernet",
+        "task-implement-training",
+        "task-implement-router",
+        "task-implement-nsga2",
+        "task-implement-drnas",
+        "task-validate-naswot",
+        "task-train-baselines",
+        "task-cifar10-experiments",
+        "task-cifar100-experiments",
+        "task-imagenet100-experiments",
+        "task-ablation-cotraining",
+        "task-ablation-router",
+        "task-ablation-searchspace",
+        "task-ablation-distillation",
+        "task-ablation-nas-comparison",
+        "task-ablation-loss",
+        "task-latency-tables",
+        "task-onnx-export",
+        "task-deploy-jetson",
+        "task-deploy-rpi",
+        "task-deploy-stretch",
+        "task-pareto-plots",
+        "task-dynamic-analysis",
+        "task-write-methodology",
+        "task-write-experiments",
+        "task-write-results",
+        "task-write-discussion",
+        "task-write-conclusion",
+        "task-write-abstract",
+        "task-write-appendix",
+        "task-final-paper",
+        "task-presentation",
+        "task-open-source"
+      ]
+    },
+    {
+      "id": "column-doing",
+      "title": "Doing",
+      "tasksIds": []
+    },
+    {
+      "id": "column-done",
+      "title": "Done",
+      "tasksIds": [
+        "task-lit-review",
+        "task-related-works",
+        "task-research-plan",
+        "task-paper-outlines"
+      ]
+    }
+  ]
+}
