@@ -1,7 +1,7 @@
 # Research Plan: Neural Architecture Search for Dynamic Inference
 
-**Project Lead:** Oliver Larsen  
-**Supervisor:** Francesco Daghero (fdag@mmmi.sdu.dk, DECO Lab)  
+**Team:** Oliver Larsen, Oliver Svendsen, Aleksander Korsholm, Kristoffer Petersen
+**Supervisor:** Francesco Daghero (fdag@mmmi.sdu.dk, DECO Lab)
 **Started:** February 2026
 
 ---
