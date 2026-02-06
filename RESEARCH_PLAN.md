@@ -42,9 +42,9 @@ Develop a NAS framework for co-training big/little dynamic inference models, opt
 ### Phase 4: Edge Deployment (Weeks 15-18)
 | Week | Task | Deliverable |
 |------|------|-------------|
-| 15 | Model export (ONNX/TensorRT) | Optimized model artifacts |
-| 16 | Deploy on Jetson Nano | Latency/memory benchmarks |
-| 17 | Deploy on Raspberry Pi / mobile | Cross-platform benchmarks |
+| 15 | Model export (ONNX) | Optimized model artifacts |
+| 16 | Deploy on Raspberry Pi 4 | Latency/memory benchmarks |
+| 17 | Deploy on Raspberry Pi 5 / other RPi models | Cross-model benchmarks |
 | 18 | Energy measurement setup + profiling | Energy efficiency report |
 
 ### Phase 5: Analysis & Documentation (Weeks 19-22)
@@ -73,7 +73,7 @@ Develop a NAS framework for co-training big/little dynamic inference models, opt
 3. **Edge ML**
    - MobileNet, EfficientNet families
    - Quantization-aware training
-   - TensorRT/ONNX optimization
+   - ONNX Runtime optimization
 
 4. **Supernet Training**
    - Weight sharing strategies
@@ -157,10 +157,9 @@ Supernet Structure:
 
 | Device | Specs | Use Case |
 |--------|-------|----------|
-| Jetson Nano | 128 CUDA cores, 4GB RAM | Primary edge target |
-| Raspberry Pi 4 | ARM Cortex-A72, 4GB RAM | CPU-only baseline |
-| Coral Dev Board | Edge TPU | Accelerator comparison |
-| Mobile (Android) | Snapdragon 8xx | Real-world deployment |
+| Raspberry Pi 4 | ARM Cortex-A72 quad-core, 4/8GB RAM | Primary edge target |
+| Raspberry Pi 5 | ARM Cortex-A76 quad-core, 4/8GB RAM | Secondary edge target |
+| Other RPi models | RPi 3B+, RPi Zero 2 W (if available) | Diversity in compute capability |
 
 ### Metrics to Measure
 - **Latency:** End-to-end inference time (ms)
@@ -234,15 +233,13 @@ neural-architecture-search-for-dynamic-inference/
 │   │   └── ofa/             # Once-for-All style
 │   ├── training/            # Training loops, co-training
 │   ├── evaluation/          # Benchmarking scripts
-│   └── deployment/          # ONNX export, TensorRT
+│   └── deployment/          # ONNX export, optimization
 ├── configs/                 # Experiment configs (YAML)
 ├── scripts/                 # Training/eval shell scripts
 ├── notebooks/               # Exploration & visualization
 ├── experiments/             # Results, logs, checkpoints
 └── edge/                    # Edge deployment code
-    ├── jetson/
-    ├── rpi/
-    └── mobile/
+    └── rpi/                 # Raspberry Pi deployment
 ```
 
 ---
@@ -254,7 +251,7 @@ neural-architecture-search-for-dynamic-inference/
 | NAS training instability | High | Use proven baselines (OFA), extensive logging |
 | Edge deployment issues | Medium | Start deployment early (week 15), have backup devices |
 | ImageNet compute cost | Medium | Use ImageNet-100 subset, cloud credits if needed |
-| Time overrun | High | Prioritize CIFAR-10 + Jetson, treat others as stretch |
+| Time overrun | High | Prioritize CIFAR-10 + RPi 4, treat others as stretch |
 
 ---
 
@@ -282,13 +279,13 @@ neural-architecture-search-for-dynamic-inference/
 ### Compute
 - Local: MacBook (dev), GPU workstation if available
 - Cloud: SDU compute cluster / Google Colab Pro
-- Edge: Jetson Nano (acquire if not available)
+- Edge: Multiple Raspberry Pi models (available)
 
 ### Frameworks
 - PyTorch + torchvision
 - timm (pretrained models)
 - NNI or AutoML frameworks for NAS
-- ONNX + TensorRT for deployment
+- ONNX + ONNX Runtime for deployment
 
 ---
 

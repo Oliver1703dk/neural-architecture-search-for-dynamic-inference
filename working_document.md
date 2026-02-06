@@ -45,7 +45,7 @@ We propose a framework where big and little models are co-trained within a NAS s
 1. A NAS framework for jointly searching and co-training coupled big/little dynamic inference models.
 2. An input-adaptive routing mechanism with three variants (confidence-based, learned, difficulty-aware).
 3. Empirical comparison of differentiable, evolutionary, and OFA-style NAS strategies for dynamic model discovery.
-4. Edge deployment evaluation on multiple hardware platforms with latency, memory, and energy measurements.
+4. Edge deployment evaluation on Raspberry Pi platforms with latency, memory, and energy measurements.
 
 ### 1.5 Paper Organization
 
@@ -154,7 +154,7 @@ Despite significant progress in each individual area, a critical gap remains at 
 | NAAS / CIMNAS | Yes | No | Yes (co-design) |
 | EDANAS / NACHOS | Yes | Yes (early exit) | Partial (MACs only) |
 | Sponner et al. | Partial (post-hoc) | Yes (early exit) | Yes (MCU) |
-| **Ours (proposed)** | **Yes** | **Yes (big/little + routing)** | **Yes (edge hardware)** |
+| **Ours (proposed)** | **Yes** | **Yes (big/little + routing)** | **Yes (Raspberry Pi)** |
 
 Several specific gaps motivate our work:
 
@@ -298,9 +298,9 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 > - Latency lookup table per device (as in OFA/ProxylessNAS -- measure each operation on target hardware)
 > - MCUNet-style two-stage (first optimize search space for target constraints, then search within it)
 >
-> FLOPs are poor proxies for actual latency (Benmeziane et al., 2021). For Jetson Nano (GPU), FLOPs-latency correlation is reasonable; for Raspberry Pi (CPU), less so.
+> FLOPs are poor proxies for actual latency (Benmeziane et al., 2021). For CPU-only devices like Raspberry Pi, FLOPs-latency correlation can be weak due to memory bandwidth, cache effects, and operator-level differences.
 >
-> **OPEN QUESTION:** Should we also constrain model size (flash storage) for MCU-class targets, or focus on Jetson/RPi?
+> **OPEN QUESTION:** Should we build separate latency lookup tables per RPi model, or a single generalized ARM CPU cost model?
 
 ---
 
@@ -364,21 +364,24 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 
 > **TO DETERMINE: Hardware targets and measurement protocols.**
 >
-> - **Primary: Jetson Nano** (128 CUDA cores, 4GB RAM, TensorRT). Most capable edge target. Latency via CUDA events, memory via `nvidia-smi`, power via built-in INA3221 monitor.
-> - **Secondary: Raspberry Pi 4** (ARM Cortex-A72, CPU-only). Pure CPU -- different performance characteristics. Tests whether our architectures generalize or overfit to GPU cost models.
-> - **Stretch: Coral Dev Board / Android mobile** -- only if time permits.
+> We have access to multiple Raspberry Pi models (CPU-only ARM devices). All edge deployment and benchmarking targets Raspberry Pi exclusively.
+>
+> - **Raspberry Pi 4** (ARM Cortex-A72 quad-core, 4GB/8GB RAM). Latency via `time.perf_counter()`, memory via `/proc/self/status`, power via external USB power meter.
+> - **Raspberry Pi 5** (ARM Cortex-A76 quad-core, 4GB/8GB RAM). Faster CPU, tests whether architectural choices generalize across ARM generations.
+> - Additional RPi models if available (e.g., RPi 3B+, RPi Zero 2 W) for diversity in compute capability.
 >
 > **OPEN QUESTIONS:**
-> - Run search with ONE device's cost model and evaluate on all devices (OFA approach)? Or separate searches per device?
+> - Run search with ONE RPi model's cost model and evaluate on all RPi variants? Or build a generalized ARM CPU latency predictor?
 > - How fine-grained should latency lookup tables be? Per-operator or per-block?
 > - For search (thousands of evaluations), use simulated latency from lookup tables rather than actual hardware.
+> - Power measurement: external USB power meter, or software-based estimation via CPU utilization and frequency scaling?
 
 ### 4.5 Implementation Details
 
 > **TO DETERMINE: Training hyperparameters.**
 >
 > - Framework: PyTorch 2.0+, timm library, Weights & Biases / TensorBoard
-> - Deployment: ONNX export, TensorRT optimization, INT8/FP16 quantization
+> - Deployment: ONNX export, ONNX Runtime optimization, INT8 quantization
 >
 > **Supernet training (needs tuning):**
 > - Optimizer: SGD with momentum 0.9, weight decay 3e-5 (following OFA/BigNAS)
@@ -438,7 +441,7 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 
 ### 5.2 Accuracy-Efficiency Pareto Frontier
 
-> **Figure 1 (most important figure):** Three subplots -- (a) Accuracy vs. FLOPs, (b) Accuracy vs. Latency (Jetson), (c) Accuracy vs. Energy.
+> **Figure 1 (most important figure):** Three subplots -- (a) Accuracy vs. FLOPs, (b) Accuracy vs. Latency (Raspberry Pi), (c) Accuracy vs. Energy.
 >
 > Show: our dynamic Pareto front (swept across tau), static baselines as points, cascaded baseline front, MSDNet front, EDANAS front. Reference anchors: BigNAS range (76.5-80.9% at 242-1040 MFLOPs).
 >
@@ -475,14 +478,14 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 
 ### 5.5 Edge Deployment Results
 
-> **Table 8-9: Jetson Nano and Raspberry Pi 4 deployment.**
-> - All models in FP32 and FP16/INT8 quantized variants.
-> - Include TensorRT-optimized and ONNX runtime numbers.
+> **Table 8-9: Raspberry Pi deployment (RPi 4 and RPi 5).**
+> - All models in FP32 and INT8 quantized variants.
+> - Include ONNX Runtime numbers with and without optimization.
 >
 > **Success:** Dynamic model achieves >=1.5x latency reduction over big-only at <1% accuracy loss.
-> **Key concern:** Does routing overhead (conditional branching, memory transfers) erode theoretical FLOPs savings on real hardware? MCUNet showed peak activation memory is the binding constraint on MCUs -- similar mismatches may appear.
+> **Key concern:** Does routing overhead (conditional branching, memory transfers) erode theoretical FLOPs savings on real hardware? On CPU-only devices, routing overhead is proportionally more significant without GPU parallelism. MCUNet showed peak activation memory is the binding constraint on MCUs -- similar mismatches may appear on memory-constrained RPi models.
 >
-> **Figure 2: Latency vs. FLOPs scatter** -- shows correlation (or lack thereof) between theoretical FLOPs and measured latency per platform. Separate for Jetson (GPU) vs. RPi (CPU).
+> **Figure 2: Latency vs. FLOPs scatter** -- shows correlation (or lack thereof) between theoretical FLOPs and measured latency on Raspberry Pi. Compare across RPi models (RPi 4 vs. RPi 5) to show generalization.
 
 ### 5.6 Dynamic Behavior Analysis
 
@@ -526,7 +529,7 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 
 > **Honest assessment to address:**
 > - Dataset scope: vision classification only. No evidence for detection, segmentation, or non-vision tasks.
-> - Hardware scope: 2-4 edge platforms out of hundreds in practice.
+> - Hardware scope: Raspberry Pi only (CPU-only ARM devices). Results may not generalize to GPU-equipped edge devices or MCUs.
 > - Search cost: if pipeline requires multiple GPU-days, practical advantage over training two models separately must be weighed. Search cost amortizes only if discovered architecture is deployed at scale.
 > - Two-model limit: binary big/little is a simplification. Optimal may be a continuum (US-Nets arbitrary widths, MSDNet multiple exits).
 > - Static router at deployment: no on-device adaptation to distribution shift.
@@ -555,7 +558,7 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 > **Paragraph 2: Key results.** (fill with actual numbers)
 > - On CIFAR-10/100: accuracy at ADA MACs vs. EDANAS (80.9% at 17.31M) and NACHOS (72.65% at 2.44M)
 > - Co-training improvement over independent training vs. US-Nets reference (+2.2%)
-> - Edge deployment: latency, speedup, accuracy loss on Jetson Nano and Raspberry Pi
+> - Edge deployment: latency, speedup, accuracy loss on Raspberry Pi
 > - NAS strategy winner and search cost
 >
 > **Paragraph 3: Broader significance.**
@@ -648,7 +651,7 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 > - A.2 NAS search: per-strategy parameters (DrNAS architecture LR, temperature, regularization; NSGA-II population, generations, tournament size, mutation/crossover rates; OFA predictor architecture and training).
 > - A.3 Loss function: values of alpha, beta, gamma, lambda, T. How they were tuned (grid search ranges, final values).
 > - A.4 Router: MLP architecture, difficulty-aware features, confidence threshold sweep values.
-> - A.5 Edge deployment: ONNX export params, TensorRT optimization level, quantization calibration (samples, algorithm), inference protocol (warmup, timed iterations, batch size).
+> - A.5 Edge deployment: ONNX export params, ONNX Runtime optimization level, quantization calibration (samples, algorithm), inference protocol (warmup, timed iterations, batch size).
 
 ### B. Architecture Visualizations
 
@@ -668,7 +671,7 @@ Following NACHOS, potentially add: L_cost (regularize toward target MACs budget)
 
 ### D. Edge Deployment Details
 
-> - D.1 Device specifications: software versions (JetPack, CUDA, TensorRT, ONNX Runtime, PyTorch), OS, thermal config, power measurement setup.
+> - D.1 Device specifications: RPi model, OS version, ONNX Runtime version, PyTorch version, ARM CPU governor settings, thermal config, power measurement setup (external USB power meter).
 > - D.2 Quantization impact: FP32 vs. FP16 vs. INT8 accuracy and latency per model per device. Layer-by-layer quantization sensitivity.
 > - D.3 Memory profiling: peak activation memory (per MCUNet insight), parameter memory, runtime overhead. Memory timeline plot.
 > - D.4 Thermal throttling: sustained throughput under continuous inference, temperature curves, p50/p95/p99 latency.

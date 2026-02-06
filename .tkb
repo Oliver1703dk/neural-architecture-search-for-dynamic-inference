@@ -118,32 +118,27 @@
     },
     "task-latency-tables": {
       "id": "task-latency-tables",
-      "description": "Build latency lookup tables for edge devices\n\n- Profile individual operations (conv with specific kernel, channels, spatial size) on each target device\n- Jetson Nano: use CUDA events, nvidia-smi for memory, INA3221 for power\n- Raspberry Pi 4: use time.perf_counter(), /proc/self/status for memory\n- Build predictive latency model from per-operation measurements\n- Validate: predicted vs. measured end-to-end latency correlation",
+      "description": "Build latency lookup tables for Raspberry Pi\n\n- Profile individual operations (conv with specific kernel, channels, spatial size) on each RPi model\n- Raspberry Pi 4: use time.perf_counter(), /proc/self/status for memory\n- Raspberry Pi 5: same protocol, compare ARM Cortex-A76 vs. A72 characteristics\n- Power measurement via external USB power meter\n- Build predictive latency model from per-operation measurements\n- Validate: predicted vs. measured end-to-end latency correlation",
       "columnId": "column-todo"
     },
     "task-onnx-export": {
       "id": "task-onnx-export",
-      "description": "Model export and optimization pipeline\n\n- ONNX export from PyTorch\n- TensorRT optimization for Jetson Nano (FP32, FP16, INT8)\n- Quantization calibration: select calibration samples, test entropy vs. MinMax\n- INT8 quantization-aware: check layer-by-layer sensitivity\n- Verify accuracy preservation after export/optimization",
+      "description": "Model export and optimization pipeline\n\n- ONNX export from PyTorch\n- ONNX Runtime optimization for Raspberry Pi (FP32, INT8)\n- Quantization calibration: select calibration samples, test entropy vs. MinMax\n- INT8 quantization-aware: check layer-by-layer sensitivity\n- Verify accuracy preservation after export/optimization\n- Test ONNX Runtime execution providers for ARM CPU",
       "columnId": "column-todo"
     },
-    "task-deploy-jetson": {
-      "id": "task-deploy-jetson",
-      "description": "Deploy and benchmark on Jetson Nano (primary edge target)\n\n- Deploy discovered big/little pair + router\n- Measure: latency (median over 1000 inferences, 100 warmup), throughput, peak memory, energy\n- Test FP32, FP16, INT8 variants\n- Compare against all baselines on same hardware\n- Profile routing overhead specifically (feature extraction + router forward + branching)\n- Thermal throttling analysis: sustained throughput, temperature curves",
+    "task-deploy-rpi4": {
+      "id": "task-deploy-rpi4",
+      "description": "Deploy and benchmark on Raspberry Pi 4 (primary edge target)\n\n- Deploy discovered big/little pair + router\n- Measure: latency (median over 1000 inferences, 100 warmup), throughput, peak memory, energy\n- Test FP32 and INT8 variants via ONNX Runtime\n- Compare against all baselines on same hardware\n- Profile routing overhead specifically (feature extraction + router forward + branching)\n- Thermal throttling analysis: sustained throughput, temperature curves\n- Power measurement via external USB power meter",
       "columnId": "column-todo"
     },
-    "task-deploy-rpi": {
-      "id": "task-deploy-rpi",
-      "description": "Deploy and benchmark on Raspberry Pi 4 (CPU-only)\n\n- CPU-only execution: different performance characteristics than GPU\n- Routing overhead proportionally more significant without GPU parallelism\n- Same measurement protocol as Jetson\n- Key question: does dynamic approach still provide net speedup on CPU-only?",
-      "columnId": "column-todo"
-    },
-    "task-deploy-stretch": {
-      "id": "task-deploy-stretch",
-      "description": "STRETCH: Deploy on Coral Dev Board / Android mobile\n\n- Only if time permits\n- Tests generalization to different accelerator types (Edge TPU, Snapdragon DSP)\n- Cross-platform comparison table",
+    "task-deploy-rpi5": {
+      "id": "task-deploy-rpi5",
+      "description": "Deploy and benchmark on Raspberry Pi 5 (secondary edge target)\n\n- ARM Cortex-A76: faster CPU, tests cross-generation generalization\n- Same measurement protocol as RPi 4\n- Key comparison: does RPi 5 change the accuracy-latency trade-off?\n- Routing overhead analysis: is it proportionally smaller on faster CPU?\n- Cross-RPi comparison table",
       "columnId": "column-todo"
     },
     "task-pareto-plots": {
       "id": "task-pareto-plots",
-      "description": "Create Pareto frontier plots (most important figure)\n\n- Three subplots: (a) Accuracy vs. FLOPs, (b) Accuracy vs. Latency (Jetson), (c) Accuracy vs. Energy\n- Show: our Pareto front (swept across tau), static baselines as points, cascaded baseline front, MSDNet front\n- Reference anchors: BigNAS range, MobileNetV3-Small/Large, EDANAS/NACHOS\n- Also: accuracy vs. exit rate curve, threshold sensitivity curve",
+      "description": "Create Pareto frontier plots (most important figure)\n\n- Three subplots: (a) Accuracy vs. FLOPs, (b) Accuracy vs. Latency (RPi 4), (c) Accuracy vs. Energy\n- Show: our Pareto front (swept across tau), static baselines as points, cascaded baseline front, MSDNet front\n- Reference anchors: BigNAS range, MobileNetV3-Small/Large, EDANAS/NACHOS\n- Also: accuracy vs. exit rate curve, threshold sensitivity curve\n- Additional subplot or overlay: RPi 5 latency comparison",
       "columnId": "column-todo"
     },
     "task-dynamic-analysis": {
@@ -203,7 +198,7 @@
     },
     "task-supervisor-meeting": {
       "id": "task-supervisor-meeting",
-      "description": "Schedule kickoff meeting with Francesco Daghero\n\n- Present literature review findings and gap analysis\n- Discuss search space coupling decision (nested vs. sibling vs. overlapping)\n- Align on dataset priorities and compute budget\n- Clarify edge hardware availability (Jetson Nano, RPi)\n- Get feedback on router design choices",
+      "description": "Schedule kickoff meeting with Francesco Daghero\n\n- Present literature review findings and gap analysis\n- Discuss search space coupling decision (nested vs. sibling vs. overlapping)\n- Align on dataset priorities and compute budget\n- Confirm Raspberry Pi models available for edge deployment\n- Get feedback on router design choices",
       "columnId": "column-todo"
     }
   },
@@ -234,9 +229,8 @@
         "task-ablation-loss",
         "task-latency-tables",
         "task-onnx-export",
-        "task-deploy-jetson",
-        "task-deploy-rpi",
-        "task-deploy-stretch",
+        "task-deploy-rpi4",
+        "task-deploy-rpi5",
         "task-pareto-plots",
         "task-dynamic-analysis",
         "task-write-methodology",

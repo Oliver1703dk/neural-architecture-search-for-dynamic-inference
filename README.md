@@ -19,7 +19,7 @@ Can NAS-driven co-training of coupled big/little models outperform static cascad
 1. **Data and Dataset Preparation** -- Benchmark on standard vision datasets (CIFAR-10, ImageNet, edge-relevant datasets) and preprocess data for dynamic inference evaluation.
 2. **NAS Exploration** -- Investigate and implement NAS strategies including supernet training, evolutionary NAS, and differentiable NAS for discovering coupled big/little models.
 3. **Dynamic Model Training** -- Co-train big and little components in a unified framework, exploring dimension adaptation (width, depth, block-level scaling) during training.
-4. **Edge Deployment** -- Deploy discovered architectures on edge hardware (Jetson Nano, Raspberry Pi, mobile devices) and evaluate latency, memory, and energy consumption.
+4. **Edge Deployment** -- Deploy discovered architectures on Raspberry Pi hardware and evaluate latency, memory, and energy consumption.
 5. **Evaluation** -- Benchmark accuracy, inference cost, and dynamic behavior against standard cascaded and early-exit baselines.
 
 ## Methodology
@@ -78,15 +78,13 @@ neural-architecture-search-for-dynamic-inference/
 │   │   └── ofa/             # Once-for-All style
 │   ├── training/            # Training loops, co-training
 │   ├── evaluation/          # Benchmarking scripts
-│   └── deployment/          # ONNX export, TensorRT
+│   └── deployment/          # ONNX export, optimization
 ├── configs/                 # Experiment configs (YAML)
 ├── scripts/                 # Training/eval shell scripts
 ├── notebooks/               # Exploration & visualization
 ├── experiments/             # Results, logs, checkpoints
 └── edge/                    # Edge deployment code
-    ├── jetson/
-    ├── rpi/
-    └── mobile/
+    └── rpi/                 # Raspberry Pi deployment
 ```
 
 ## Open Source
