@@ -55,43 +55,101 @@ Section 2 reviews related work on NAS, dynamic inference, and edge ML. Section 3
 
 ## 2. Related Work
 
+Our work sits at the intersection of three research areas: Neural Architecture Search, dynamic inference, and hardware-aware model optimization for edge deployment. We review each area and identify the gap our framework addresses.
+
 ### 2.1 Neural Architecture Search
 
-Neural Architecture Search automates the design of network architectures. Early methods used reinforcement learning (Zoph & Le, 2017) and evolutionary algorithms (Real et al., 2019), but required thousands of GPU-days. Subsequent work focused on reducing search cost.
+Neural Architecture Search (NAS) automates the design of network architectures, replacing manual engineering with algorithmic optimization. The field has evolved through three generations of search strategies, each reducing the computational cost while maintaining or improving the quality of discovered architectures.
 
-**DARTS** (Liu et al., 2019) introduced differentiable NAS by relaxing the discrete search space into a continuous one, enabling gradient-based optimization. This reduced search cost to 1.5 GPU-days on CIFAR-10 while achieving 2.76% test error.
+#### 2.1.1 Reinforcement Learning and Evolutionary Approaches
 
-**Once-for-All** (Cai et al., 2020) proposed training a single supernet that supports many sub-networks through progressive shrinking. After a single training run, sub-networks can be extracted without retraining, enabling efficient deployment across diverse hardware.
+Early NAS methods used reinforcement learning (Zoph & Le, 2017) and evolutionary algorithms (Real et al., 2019) to explore architecture spaces, but required thousands of GPU-days. Multi-objective evolutionary methods have since made significant strides. Liang et al. (2024) proposed Bi-MOEA/D-NAS, which uses a bi-population MOEA/D algorithm to address the "small model trap" -- where evolutionary search prematurely converges to small models while missing superior larger architectures. By maintaining two sub-populations optimizing in opposite directions (minimizing vs. maximizing model size alongside accuracy), the method discovers diverse Pareto-optimal architectures in 0.5 GPU-days, achieving 2.72% test error on CIFAR-10 with 3.26M parameters.
 
-**BigNAS** (Yu et al., 2020) scaled single-stage NAS by training large supernets with sandwich sampling and in-place distillation, directly producing deployable models without post-search retraining.
+#### 2.1.2 Differentiable NAS
 
-**SPOS** (Guo et al., 2020) used uniform path sampling to decouple supernet training from architecture search, improving search efficiency.
+DARTS (Liu et al., 2019) introduced differentiable NAS by relaxing the discrete search space into a continuous one, enabling gradient-based optimization. This reduced search cost to 1.5 GPU-days on CIFAR-10 while achieving 2.76% test error. However, DARTS suffers from performance collapse and high memory usage. HPE-DARTS (2025) addresses these issues through hybrid pruning with a proxy evaluation strategy (NetPerfProxy), completing search in 0.61 hours on NAS-Bench-201 with competitive accuracy. DrNAS, P-DARTS, and beta-DARTS further improve DARTS stability and search-evaluation gap issues.
 
-<!-- TODO: Add 3-5 more references as literature review progresses -->
+#### 2.1.3 Supernet and One-Shot Methods
 
-### 2.2 Dynamic Inference
+One-shot methods decouple supernet training from architecture search through weight sharing. **Once-for-All (OFA)** (Cai et al., 2020) trains a single supernet supporting many sub-networks through progressive shrinking of kernel size, depth, and width. After training, sub-networks can be extracted without retraining, enabling deployment across diverse hardware platforms. **BigNAS** (Yu et al., 2020) scaled single-stage NAS with five key techniques: the sandwich rule (sampling smallest, largest, and random sub-networks per batch), in-place distillation from the largest to smaller sub-networks, modified BatchNorm initialization, exponential learning rate decay, and regularization applied only to the largest model. BigNAS achieves 76.5--80.9% top-1 accuracy on ImageNet at 242--1040 MFLOPs without any post-search retraining. SPOS (Guo et al., 2020) used uniform path sampling to further decouple supernet training from architecture search. A hierarchical MCTS-based approach (under review, ICLR 2025) learns the tree structure via agglomerative clustering of architecture output vectors, finding globally optimal architectures in NAS-Bench-Macro.
 
-Dynamic inference adapts computation to input difficulty at test time.
+#### 2.1.4 Sample-Efficient and Zero-Cost Methods
 
-**Early-exit networks** attach intermediate classifiers to a backbone. BranchyNet (Teerapittayanon et al., 2016) pioneered confidence-based early exiting. MSDNet (Huang et al., 2018) introduced multi-scale dense connectivity for anytime prediction, achieving strong accuracy-efficiency trade-offs.
+Recent work has focused on reducing the number of evaluations needed. Finkler et al. (2021) proposed polyharmonic spline interpolation for NAS, requiring only 2d+3 evaluations for a d-dimensional search space. Applied to ResNet18 on ImageNet-22K (14M images, 21,841 classes), it achieved a 3.13% absolute improvement over state-of-the-art with just 15 evaluations exploring approximately 3 trillion configurations. Zero-cost proxies like NASWOT estimate architecture quality without training, enabling rapid candidate screening.
 
-**Cascaded models** route inputs through a sequence of models. Big-little networks pair a small model with a large model, using the small model's confidence to decide if the large model is needed. This approach is simple but limited by independent training.
+### 2.2 Dynamic Neural Networks and Dynamic Inference
 
-**Input-adaptive methods** such as SkipNet and BlockDrop learn to selectively execute layers or blocks conditioned on the input, reducing average computation while maintaining accuracy.
+Dynamic neural networks adapt their structure or parameters to each input at inference time, offering a promising path to efficient edge deployment. Han et al. (2021) provide a comprehensive survey categorizing dynamic networks into three types: instance-wise (adapting per sample), spatial-wise (adapting per spatial location), and temporal-wise (adapting across time steps). We focus on the instance-wise category most relevant to our work.
 
-<!-- TODO: Expand with additional references on adaptive computation -->
+#### 2.2.1 Early-Exit Networks
 
-### 2.3 Hardware-Aware and Edge ML
+Early-exit networks augment a backbone with intermediate classifiers that allow test samples to exit before reaching the final layer when the network is sufficiently confident. **BranchyNet** (Teerapittayanon et al., 2017) is a seminal work establishing entropy-based early exiting: side branches consisting of convolutional and fully-connected layers produce softmax predictions, and if the entropy falls below a threshold, the sample exits. On MNIST, 94.3% of samples exit at the first branch with 5.4x CPU speedup. The paper explicitly identifies the need to "derive an algorithm to find the optimal placement locations of the branches automatically" -- precisely the gap NAS can fill. **MSDNet** (Huang et al., 2018) introduced multi-scale dense connectivity for anytime prediction with strong accuracy-efficiency trade-offs. Laskaridis et al. (2021) provide a comprehensive taxonomy of early-exit networks, decomposing the design into backbone selection, exit architecture, exit placement, training strategies (end-to-end vs. IC-only with frozen backbone), and exit policies (entropy, confidence, patience-based, learnable). They identify NAS-based exploration of the early-exit design space as an open and promising research direction.
 
-Efficient architectures such as MobileNet (Howard et al., 2019) and EfficientNet (Tan & Le, 2019) are designed for resource-constrained deployment. Hardware-aware NAS methods incorporate latency or energy predictors into the search objective.
+A complementary survey on early exit methods in NLP (Bajpai & Hanawal, 2025) covers exit criteria including confidence-based (DeeBERT), patience-based (PABEE), distribution-based (PALBERT), and ensemble methods, as well as threshold selection strategies ranging from static validation-set-based to dynamic Multi-Armed Bandit approaches. The cross-domain applicability of early-exit mechanisms confirms their generality for dynamic inference.
 
-FBNet (Wu et al., 2019) performs differentiable NAS with hardware-aware loss functions. ProxylessNAS (Cai et al., 2019) directly searches on the target task and hardware. These methods demonstrate that NAS can produce architectures that outperform manually designed efficient networks on specific hardware.
+#### 2.2.2 Channel-Level and Layer-Level Adaptive Computation
 
-<!-- TODO: Add edge deployment and quantization references -->
+Beyond early exits, dynamic inference can operate at finer granularities. **Adaptive Channel Skipping (ACS)** (Zou et al., 2023) introduces channel-level dynamic inference, where a gating network produces binary decisions per channel based on input features. ACS achieves 62% FLOPs reduction on CIFAR-10 with DenseNet-41 while improving accuracy from 86.70% to 88.64%. An enhanced variant, ACS-DG, uses dynamic grouping convolutions to reduce the gating network's own cost by up to 50.91%. SkipNet and BlockDrop learn to selectively skip entire layers or blocks conditioned on the input, while Resolution Adaptive Networks adjust input resolution dynamically.
 
-### 2.4 Gap in Existing Work
+#### 2.2.3 Big/Little Model Cascading
 
-No prior work applies NAS to jointly discover and co-train coupled big/little dynamic inference models. Existing NAS methods optimize a single architecture. Existing dynamic inference methods use fixed or independently trained components. Our work bridges this gap by embedding the big/little coupling directly into the NAS search space.
+Cascaded approaches route inputs through models of different sizes. **BiLD** (Kim et al., 2023) coordinates a small and large decoder model for text generation: the small model generates tokens until its confidence drops below a fallback threshold, then the large model corrects predictions in parallel. This achieves up to 2.12x speedup with approximately 1 point quality degradation. The observation that ~80% of small model predictions match the large model validates the efficiency of conditional computation. For vision, EdgeFM (Yang et al., 2023) deploys lightweight CNNs on edge devices with a cloud-hosted foundation model backup, achieving 3.2x latency reduction and 34.3% accuracy improvement through dynamic model switching based on input uncertainty and network conditions.
+
+Broader surveys on small-large model collaboration (Chen et al., 2025; Wang et al., 2025) catalog collaboration modes including pipeline processing, hybrid routing, auxiliary enhancement, and knowledge distillation, with cascade routing frameworks like FrugalGPT reducing cost while maintaining quality. These patterns are directly applicable to dynamic inference systems where computation is adaptively allocated between models of different sizes.
+
+### 2.3 Hardware-Aware NAS and Edge Deployment
+
+Deploying neural networks on edge devices requires explicitly accounting for hardware constraints during architecture design. Benmeziane et al. (2021) provide the first comprehensive survey of hardware-aware NAS (HW-NAS), categorizing methods by search space (architecture and hardware), search strategy (RL, EA, gradient-based), acceleration techniques (weight sharing, accuracy predictors), and hardware cost estimation (real-time measurement, lookup tables, analytical models, learned predictors). They identify the key insight that FLOPs are poor proxies for actual latency on diverse hardware.
+
+#### 2.3.1 Latency and Energy-Aware Search
+
+**FBNet** (Wu et al., 2019) performs differentiable NAS with hardware-aware loss functions. **ProxylessNAS** (Cai et al., 2019) directly searches on the target task and hardware, removing the proxy-dataset gap. **PlatformX** (Tu et al., 2025) is a fully automated HW-NAS framework with transferable kernel-level energy predictors that generalize across edge devices with only 50--100 calibration samples. On CIFAR-10, it discovers models achieving up to 72% lower energy consumption than NAS-Bench-201 baselines. **RAM-NAS** (Mao et al., 2025) targets robotic edge hardware (NVIDIA Jetson AGX Orin, Xavier, Xavier NX) with a mutual distillation strategy where all subnets distill from each other using Decoupled Knowledge Distillation loss, achieving 76.7--81.4% ImageNet top-1 accuracy with latency-optimal models for each hardware platform.
+
+#### 2.3.2 Neural Architecture and Hardware Co-Design
+
+**NAAS** (Lin et al., 2021) jointly optimizes the neural network architecture, accelerator architecture (PE connectivity and dataflow), and compiler mapping strategy using CMA-ES, achieving 2.6--4.4x speedup over Eyeriss/NVDLA. **CIMNAS** (Krestinskaya et al., 2025) extends co-design to Compute-in-Memory hardware, jointly searching neural architecture, quantization policy, and CIM hardware parameters over a 9.9 x 10^85 search space, achieving 90--104.5x EDAP reduction without accuracy loss. The NACOS survey (Bachiri et al., 2024) systematizes the joint optimization of NAS and automatic code optimization, demonstrating that independent optimization of architecture and compiler schedule is sub-optimal and proposing taxonomies for two-stage and one-stage co-search methods.
+
+#### 2.3.3 Edge Deployment Techniques
+
+A comprehensive review of DL inference for edge intelligence (2025) covers model compression (pruning, quantization, knowledge distillation), embedded AI hardware platforms, and memory optimization. The review identifies NAS for edge inference as a key open challenge, emphasizing the need for hardware-aware architectures tailored to diverse edge platforms. Practical deployment pipelines include: APQ (Wang et al., 2020) jointly searching architecture, pruning policy, and quantization at the sub-network level; MCUNet achieving >70% ImageNet top-1 on off-the-shelf microcontrollers; and Al Youssef et al. (2025) combining HW-NAS with weight reshaping and quantization for deployment on ultra-low-power MCUs (512KB Flash, 96KB SRAM), achieving 87% inference time reduction and 89% energy reduction. Gupta et al. (2024) apply supernet-based NAS with in-place Pearson Correlation distillation to produce palettes of object detection models for ADAS edge deployment with limited training data.
+
+### 2.4 NAS for Dynamic Inference
+
+The most directly relevant prior works combine NAS with dynamic inference mechanisms, though this intersection remains underexplored.
+
+**EDANAS** (Gambella & Roveri, 2023) is the first NAS framework that jointly designs Early Exit Neural Network (EENN) architectures and exit selection parameters. Built on the OFA supernet with NSGA-II search, it introduces ADA MACS -- a weighted-average MACs metric capturing the actual computational cost of early-exit inference, where weights reflect the fraction of samples exiting at each classifier. On CIFAR-10, EDANAS achieves 80.9% accuracy with 17.31M ADA MACS (vs. 21.67M for a single-exit NAS backbone). However, EDANAS is limited to coarse threshold values ({0.1, 0.2, 1.0}), short candidate training (5 epochs), and significant accuracy degradation with more than 3 exit points.
+
+**NACHOS** (Gambella et al., 2025) extends EDANAS as the first NAS framework jointly co-designing backbone and early exit classifiers under user-defined MAC constraints. It introduces two novel regularization terms: L_cost (enforcing computational constraints during training) and L_peak (aligning exit confidence scores with operating points via a Support Matrix of per-class accuracies). NACHOS achieves 72.65% accuracy at 2.44M MACs on CIFAR-10 (vs. 67.78% for EDANAS), using fewer exit classifiers (2.80 vs. 4.60 on average) while producing EENNs whose accuracy exceeds the backbone-only accuracy. Search cost is 2 GPU-days on a single NVIDIA A40.
+
+**Sponner et al. (2024)** propose a post-training augmentation framework that converts pretrained models into EENNs, formulating threshold configuration as a shortest-path problem solved via Bellman-Ford. The framework runs on a laptop CPU and maps EENNs to heterogeneous multi-processor IoT platforms (e.g., Cortex-M0 + Cortex-M4F), achieving 59--78% MACs reduction with minimal accuracy loss.
+
+### 2.5 Gap in Existing Work
+
+Despite significant progress in each individual area, a critical gap remains at their intersection. Table 1 summarizes the coverage of key works across the three dimensions central to our project.
+
+| Work | NAS-Driven Architecture | Dynamic Inference | Hardware-Aware Edge |
+|------|:-----------------------:|:-----------------:|:-------------------:|
+| DARTS / BigNAS / OFA | Yes | No | Partial |
+| BranchyNet / MSDNet | No | Yes (early exit) | No |
+| ACS (Zou et al.) | No | Yes (channel skip) | No |
+| FBNet / ProxylessNAS | Yes | No | Yes |
+| PlatformX / RAM-NAS | Yes | No | Yes |
+| NAAS / CIMNAS | Yes | No | Yes (co-design) |
+| EDANAS / NACHOS | Yes | Yes (early exit) | Partial (MACs only) |
+| Sponner et al. | Partial (post-hoc) | Yes (early exit) | Yes (MCU) |
+| **Ours (proposed)** | **Yes** | **Yes (big/little + routing)** | **Yes (edge hardware)** |
+
+Several specific gaps motivate our work:
+
+1. **No joint big/little NAS.** EDANAS and NACHOS search for early exit classifiers on a fixed OFA backbone but do not jointly design the big and little sub-networks themselves. No existing NAS framework searches for coupled big/little architectures that are co-trained within a unified supernet.
+
+2. **Limited routing mechanisms.** Current NAS-for-dynamic-inference methods rely solely on confidence thresholds for exit decisions. No work uses NAS to jointly optimize learned routing networks, confidence gating, or difficulty-aware routing alongside the architecture.
+
+3. **Incomplete hardware awareness.** EDANAS and NACHOS use MACs as a hardware proxy but do not incorporate real latency or energy measurements from target edge devices. PlatformX and RAM-NAS provide hardware-aware NAS but do not support dynamic inference.
+
+4. **No NAS + dynamic inference + compiler co-optimization.** The NACOS survey (Bachiri et al., 2024) demonstrates the importance of co-optimizing architecture and compiler schedules, but all existing NACOS methods target static architectures. Extending this to dynamic inference architectures where different inputs traverse different computational paths remains an open challenge.
+
+Our work addresses these gaps by proposing a NAS framework that jointly discovers and co-trains coupled big/little dynamic inference models with an input-adaptive router, optimized for real edge hardware constraints.
 
 ---
 
@@ -425,18 +483,59 @@ A single supernet is trained with progressive shrinking. After training, sub-net
 
 <!-- TODO: Maintain as BibTeX, convert for final paper -->
 
-1. Liu, H., Simonyan, K., & Yang, Y. (2019). DARTS: Differentiable Architecture Search. *ICLR 2019*.
-2. Cai, H., Gan, C., Wang, T., Zhang, Z., & Han, S. (2020). Once-for-All: Train One Network and Specialize it for Efficient Deployment. *ICLR 2020*.
-3. Yu, J., Jin, P., Liu, H., Bender, G., Kindermans, P.-J., Tan, M., ... & Adam, H. (2020). BigNAS: Scaling Up Neural Architecture Search with Big Single-Stage Models. *ECCV 2020*.
-4. Guo, Z., Zhang, X., Mu, H., Heng, W., Liu, Z., Wei, Y., & Sun, J. (2020). Single Path One-Shot Neural Architecture Search with Uniform Sampling. *ECCV 2020*.
-5. Teerapittayanon, S., McDanel, B., & Kung, H. T. (2016). BranchyNet: Fast Inference via Early Exiting from Deep Neural Networks. *ICPR 2016*.
-6. Huang, G., Chen, D., Li, T., Wu, F., van der Maaten, L., & Weinberger, K. Q. (2018). Multi-Scale Dense Networks for Resource Efficient Image Classification. *ICLR 2018*.
-7. Yang, L., Han, Y., Chen, X., Song, S., Dai, J., & Huang, G. (2020). Resolution Adaptive Networks for Efficient Inference. *CVPR 2020*.
-8. Howard, A., Sandler, M., Chu, G., Chen, L.-C., Chen, B., Tan, M., ... & Adam, H. (2019). Searching for MobileNetV3. *ICCV 2019*.
-9. Tan, M., & Le, Q. V. (2019). EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks. *ICML 2019*.
-10. Wu, B., Dai, X., Zhang, P., Wang, Y., Sun, F., Wu, Y., ... & Keutzer, K. (2019). FBNet: Hardware-Aware Efficient ConvNet Design via Differentiable Neural Architecture Search. *CVPR 2019*.
+### Neural Architecture Search
 
-<!-- TODO: Add references as literature review expands (target 20+) -->
+1. Zoph, B., & Le, Q. V. (2017). Neural Architecture Search with Reinforcement Learning. *ICLR 2017*.
+2. Real, E., Aggarwal, A., Huang, Y., & Le, Q. V. (2019). Regularized Evolution for Image Classifier Architecture Search. *AAAI 2019*.
+3. Liu, H., Simonyan, K., & Yang, Y. (2019). DARTS: Differentiable Architecture Search. *ICLR 2019*.
+4. Cai, H., Gan, C., Wang, T., Zhang, Z., & Han, S. (2020). Once-for-All: Train One Network and Specialize it for Efficient Deployment. *ICLR 2020*.
+5. Yu, J., Jin, P., Liu, H., Bender, G., Kindermans, P.-J., Tan, M., ... & Le, Q. V. (2020). BigNAS: Scaling Up Neural Architecture Search with Big Single-Stage Models. *ECCV 2020*.
+6. Guo, Z., Zhang, X., Mu, H., Heng, W., Liu, Z., Wei, Y., & Sun, J. (2020). Single Path One-Shot Neural Architecture Search with Uniform Sampling. *ECCV 2020*.
+7. Liang, J., Zhu, K., Li, Y., Li, Y., & Gong, Y. (2024). Multi-Objective Evolutionary Neural Architecture Search with Weight-Sharing Supernet. *Applied Sciences, 14*(14), 6143.
+8. Anonymous. (2025). Neural Architecture Search by Learning a Hierarchical Search Space. Under review, *ICLR 2025*.
+9. HPE-DARTS: Hybrid Pruning and Proxy Evaluation in Differentiable Architecture Search. (2025). *ICAART 2025*.
+10. Finkler, U., Merler, M., Panda, R., et al. (2021). Large Scale Neural Architecture Search with Polyharmonic Splines. *AAAI 2021 Workshop*.
+
+### Dynamic Inference and Early Exit
+
+11. Teerapittayanon, S., McDanel, B., & Kung, H. T. (2017). BranchyNet: Fast Inference via Early Exiting from Deep Neural Networks. *arXiv:1709.01686*.
+12. Huang, G., Chen, D., Li, T., Wu, F., van der Maaten, L., & Weinberger, K. Q. (2018). Multi-Scale Dense Networks for Resource Efficient Image Classification. *ICLR 2018*.
+13. Han, Y., Huang, G., Song, S., Yang, L., Wang, H., & Wang, Y. (2021). Dynamic Neural Networks: A Survey. *IEEE TPAMI, 44*(11), 7436--7456.
+14. Laskaridis, S., Kouris, A., & Lane, N. D. (2021). Adaptive Inference through Early-Exit Networks: Design, Challenges and Directions. *EMDL Workshop 2021*.
+15. Zou, M., Li, X., Fang, J., Wen, H., & Fang, W. (2023). Dynamic Deep Neural Network Inference via Adaptive Channel Skipping. *Turkish J. of EE & CS, 31*(5).
+16. Bajpai, D. J., & Hanawal, M. K. (2025). A Survey of Early Exit Deep Neural Networks in NLP. *arXiv:2501.07670*.
+17. Yang, L., Han, Y., Chen, X., Song, S., Dai, J., & Huang, G. (2020). Resolution Adaptive Networks for Efficient Inference. *CVPR 2020*.
+
+### Big/Little Model Collaboration
+
+18. Kim, S., Mangalam, K., Moon, S., Malik, J., Mahoney, M. W., Gholami, A., & Keutzer, K. (2023). Speculative Decoding with Big Little Decoder. *NeurIPS 2023*.
+19. Yang, B., He, L., Ling, N., Yan, Z., Xing, G., et al. (2023). EdgeFM: Leveraging Foundation Model for Open-set Learning on the Edge. *SenSys 2023*.
+20. Chen, Y., Zhao, J., & Han, H. (2025). A Survey on Collaborative Mechanisms Between Large and Small Language Models. *arXiv:2505.07460*.
+21. Wang, F., Chen, J., Yang, S., et al. (2025). A Survey on Collaborating Small and Large Language Models. *arXiv:2510.13890*.
+
+### Hardware-Aware NAS and Edge Deployment
+
+22. Benmeziane, H., El Maghraoui, K., Ouarnoughi, H., Niar, S., Wistuba, M., & Wang, N. (2021). A Comprehensive Survey on Hardware-Aware Neural Architecture Search. *arXiv:2101.09336*.
+23. Howard, A., Sandler, M., Chu, G., Chen, L.-C., Chen, B., Tan, M., ... & Adam, H. (2019). Searching for MobileNetV3. *ICCV 2019*.
+24. Tan, M., & Le, Q. V. (2019). EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks. *ICML 2019*.
+25. Wu, B., Dai, X., Zhang, P., Wang, Y., Sun, F., Wu, Y., ... & Keutzer, K. (2019). FBNet: Hardware-Aware Efficient ConvNet Design via Differentiable Neural Architecture Search. *CVPR 2019*.
+26. Cai, H., Zhu, L., & Han, S. (2019). ProxylessNAS: Direct Neural Architecture Search on Target Task and Hardware. *ICLR 2019*.
+27. Tu, X., Chen, D., Altintas, O., Han, K., & Wang, H. (2025). PlatformX: An End-to-End Transferable Platform for Energy-Efficient Neural Architecture Search. *SEC 2025*.
+28. Mao, S., Qin, M., Dong, W., Liu, H., & Gao, Y. (2025). RAM-NAS: Resource-aware Multiobjective Neural Architecture Search. *IROS 2024*.
+29. Lin, Y., Yang, M., & Han, S. (2021). NAAS: Neural Accelerator Architecture Search. *DAC 2021*.
+30. Krestinskaya, O., Fouda, M. E., Eltawil, A., & Salama, K. N. (2025). CIMNAS: A Joint Framework for Compute-In-Memory-Aware Neural Architecture Search. *arXiv:2509.25862*.
+31. Bachiri, I., Benmeziane, H., Ouarnoughi, H., Baghdadi, R., Niar, S., & Aries, A. (2024). Combining Neural Architecture Search and Automatic Code Optimization: A Survey. *arXiv:2408.04116*.
+32. Wang, T., Wang, K., Cai, H., Lin, J., Liu, Z., Wang, H., Lin, Y., & Han, S. (2020). APQ: Joint Search for Network Architecture, Pruning and Quantization Policy. *CVPR 2020*.
+33. Al Youssef, H., Awada, S., Raad, M., Valle, M., & Ibrahim, A. (2025). Combining NAS and Weight Reshaping for Optimized Embedded Classifiers in Multisensory Glove. *Sensors, 25*(20), 6142.
+34. Gupta, D., Lee, R. D., & Wynter, L. (2024). On Efficient Object-Detection NAS for ADAS on Edge Devices. *IEEE CAI 2024*.
+35. Edge Intelligence: A Review of Deep Neural Network Inference for Edge Devices. (2025). *Electronics, 14*(12), 2495.
+
+### NAS for Dynamic Inference
+
+36. Gambella, M., & Roveri, M. (2023). EDANAS: Adaptive Neural Architecture Search for Early Exit Neural Networks. *IJCNN 2023*.
+37. Gambella, M., Pomponi, J., Scardapane, S., & Roveri, M. (2025). NACHOS: Neural Architecture Search for Hardware Constrained Early Exit Neural Networks. *arXiv:2401.13330*.
+38. Sponner, M., Servadei, L., Waschneck, B., Wille, R., & Kumar, A. (2024). Efficient Post-Training Augmentation for Adaptive Inference in Heterogeneous and Distributed IoT Environments. *arXiv:2403.07957*.
+39. Casarin, F. (2025). NAS Just Once: Neural Architecture Search for Joint Image-Video Recognition. *ICCVW 2025*.
 
 ---
 

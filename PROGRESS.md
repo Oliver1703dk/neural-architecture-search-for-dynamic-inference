@@ -17,12 +17,22 @@
 - Created progress log (`PROGRESS.md`)
 - Created `CLAUDE.md` with project conventions
 - Created working document (`working_document.md`) -- research paper skeleton with all chapters
+- **Literature review completed**: Analyzed all 33 papers in `research-papers/` folder
+- **Related Works chapter written** in `working_document.md` (Section 2), covering:
+  - NAS methods (DARTS, evolutionary, supernet/OFA, sample-efficient)
+  - Dynamic inference (early exit, channel skipping, big/little cascading)
+  - Hardware-aware NAS and edge deployment
+  - NAS for dynamic inference (EDANAS, NACHOS, post-training augmentation)
+  - Gap analysis with comparison table across all key works
+- **References expanded** from 10 to 39 citations organized by topic
 
 ### Decisions
 - *None yet*
 
 ### Open Questions
-- *None yet*
+- Which NAS strategy to prioritize first: OFA-style supernet (most practical, closest to EDANAS/NACHOS baseline) vs. evolutionary (more flexible for multi-objective optimization)?
+- Should we start with CIFAR-10 for rapid iteration, or directly target a more realistic dataset?
+- How to handle the router design: fixed confidence threshold vs. learned routing network?
 
 ---
 
